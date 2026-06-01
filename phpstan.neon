@@ -1,0 +1,18 @@
+parameters:
+    level: 5
+    paths:
+        - modules/postieri_api/src
+        - modules/postieri_api/controllers
+        - modules/postieri_api/libraries
+        - modules/postieri_api/models
+    bootstrapFiles:
+        - vendor/autoload.php
+        - tests/stubs/codeigniter.php
+    ignoreErrors:
+        # CodeIgniter's dynamic property access via $this->load->model(...) is opaque to static analysis.
+        - "#Call to an undefined method .*Model::.+#"
+        # Postieri's base controllers (extends CI_Controller) get magic properties injected.
+        - "#Property .*::\\$.+ does not exist#"
+    excludePaths:
+        - modules/postieri_api/tests/*
+        - modules/postieri_api/views/*
