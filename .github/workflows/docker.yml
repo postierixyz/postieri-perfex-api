@@ -1,4 +1,4 @@
-name: Build & push image
+name: Build & push images
 
 on:
   push:
@@ -12,8 +12,9 @@ permissions:
   packages: write
 
 jobs:
-  build:
-    name: Build & push to ghcr.io
+  # Image 1: vanilla Perfex 3.4.1 + module (public, for distribution)
+  build-vanilla:
+    name: Vanilla Perfex image → ghcr.io
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -38,10 +39,8 @@ jobs:
             VERSION="3.4.1-dev-${GITHUB_SHA::7}"
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
 
-      - name: Build & push
+      - name: Build & push vanilla
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -50,12 +49,61 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:3.4.1
+            ghcr.io/${{ github.repository }}:vanilla
           labels: |
             org.opencontainers.image.title=postieri-perfex-api
-            org.opencontainers.image.description=Perfex 3.4.1 with Postieri API module
+            org.opencontainers.image.description=Perfex 3.4.1 (vanilla) with Postieri API module
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.meta.outputs.version }}
-            org.opencontainers.image.created=${{ steps.meta.outputs.date }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Image 2: Luan's actual 3-year-old Perfex + module (private, for staging)
+  # Built with GITHUB_TOKEN so we can read the private repo at build time.
+  build-luan:
+    name: Luan's Perfex image → ghcr.io (private)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract version
+        id: meta
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="luan-dev-${GITHUB_SHA::7}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & push Luan's image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.perfex-luan
+          push: true
+          build-args: |
+            GITHUB_TOKEN=${{ secrets.GH_PAT }}
+            PERFEX_REPO=https://github.com/postierixyz/postieri-perfex-crm-2026.git
+            PERFEX_BRANCH=main
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.meta.outputs.version }}-luan
+            ghcr.io/${{ github.repository }}:luan
+          labels: |
+            org.opencontainers.image.title=postieri-perfex-api-luan
+            org.opencontainers.image.description=Luan's actual Perfex (postierixyz/postieri-perfex-crm-2026) with Postieri API module
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

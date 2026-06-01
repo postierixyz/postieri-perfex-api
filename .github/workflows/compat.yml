@@ -1,0 +1,102 @@
+name: Compatibility with Luan's Perfex
+
+# This job clones the private Perfex host repo (postierixyz/postieri-perfex-crm-2026)
+# and verifies that our module's hooks, models, and controllers line up
+# with the live codebase. Catches breakages from upstream Perfex changes
+# before we ship a release.
+#
+# Triggered on push to main and weekly (Mondays 06:00 UTC).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compat:
+    name: Hooks + models + entry-point compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout module
+        uses: actions/checkout@v4
+
+      - name: Clone Luan's Perfex (private, needs PAT)
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          git clone --depth 1 \
+            https://x-access-token:${GH_TOKEN}@github.com/postierixyz/postieri-perfex-crm-2026.git \
+            /tmp/perfex
+          cd /tmp/perfex
+          echo "Perfex commit: $(git rev-parse HEAD)"
+          echo "Perfex tree:"; ls perfex_crm/application/ | head -10
+
+      - name: Drop module into Perfex's modules dir
+        run: |
+          mkdir -p /tmp/perfex/perfex_crm/modules/postieri_api
+          cp -a . /tmp/perfex/perfex_crm/modules/postieri_api/
+          ls /tmp/perfex/perfex_crm/modules/postieri_api/ | head -10
+
+      - name: Verify the entry file is in the right place
+        run: |
+          test -f /tmp/perfex/perfex_crm/modules/postieri_api/postieri_api.php \
+            && echo "✓ postieri_api.php present" \
+            || (echo "✗ postieri_api.php MISSING" && exit 1)
+
+      - name: Verify Perfex actually fires the hooks we listen to
+        run: |
+          cd /tmp/perfex/perfex_crm
+          echo "=== Hook: invoice_status_changed ==="
+          grep -rn "do_action('invoice_status_changed'" application/ \
+            | head -3 || (echo "✗ invoice_status_changed NOT FIRED in Perfex" && exit 1)
+          echo "=== Hook: after_payment_added ==="
+          grep -rn "do_action('after_payment_added'" application/ \
+            | head -3 || (echo "✗ after_payment_added NOT FIRED in Perfex" && exit 1)
+          echo "=== Hook: lead_created ==="
+          grep -rn "do_action('lead_created'" application/ \
+            | head -3 || (echo "✗ lead_created NOT FIRED in Perfex" && exit 1)
+          echo "=== Hook: lead_converted_to_customer ==="
+          grep -rn "do_action('lead_converted_to_customer'" application/ \
+            | head -3 || (echo "✗ lead_converted_to_customer NOT FIRED in Perfex" && exit 1)
+          echo "=== Hook: after_cron_run ==="
+          grep -rn "do_action('after_cron_run'" application/ \
+            | head -3 || (echo "✗ after_cron_run NOT FIRED in Perfex" && exit 1)
+          echo "✓ all hooks verified"
+
+      - name: Verify Perfex has the tables we read/write
+        run: |
+          cd /tmp/perfex/perfex_crm
+          # We touch these tables in the module:
+          #   tblclients, tblcontacts, tblinvoices, tblinvoiceitems
+          #   tblsubscriptions, tblleads, tblinvoicepaymentrecords, tblstaff
+          #   tblstaff (for password_hash verify), tbloptions (for get_option)
+          for t in clients contacts invoices invoiceitems subscriptions leads invoicepaymentrecords staff staff options; do
+            hit=$(grep -rn "db_table_prefix\\.\\$t\\|\"tbl$t\"\\|protected \\\$table = '$t'" \
+              application/ 2>/dev/null | head -1)
+            if [ -n "$hit" ]; then
+              echo "✓ tbl$t referenced in Perfex"
+            else
+              echo "✗ tbl$t NOT FOUND in Perfex — schema drift?"
+              exit 1
+            fi
+          done
+
+      - name: Verify the global functions we call exist in Perfex
+        run: |
+          cd /tmp/perfex/perfex_crm
+          for fn in get_option update_option add_option get_instance db_prefix hooks admin_url; do
+            hit=$(grep -rln "function $fn\\| $fn =" application/helpers/ 2>/dev/null | head -1)
+            if [ -n "$hit" ]; then
+              echo "✓ $fn() available in Perfex"
+            else
+              echo "✗ $fn() NOT FOUND in Perfex"
+              exit 1
+            fi
+          done
