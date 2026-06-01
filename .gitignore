@@ -1,0 +1,29 @@
+# Dependencies
+/vendor/
+/node_modules/
+
+# IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+*.swn
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and caches
+*.log
+.phpunit.cache/
+.phpunit.result.cache
+/coverage/
+.phpstan-cache/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Local dev (never commit live tokens)
+/scripts/*.local.php
