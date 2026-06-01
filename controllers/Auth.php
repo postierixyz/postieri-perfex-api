@@ -2,6 +2,13 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
+// Fail-safe direct includes — see comment in controllers/Postieri_api.php
+// for the rationale. The namespaced classes live in src/ and the inline
+// autoloader in postieri_api.php is only registered when the init file
+// runs. To avoid a blank page on any race condition we include them here.
+require_once __DIR__ . '/../src/Http/Response.php';
+require_once __DIR__ . '/../src/Auth/TokenService.php';
+
 use Perfexcrm\Postieri\Api\Auth\TokenService;
 use Perfexcrm\Postieri\Api\Http\Response;
 

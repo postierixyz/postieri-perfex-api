@@ -2,6 +2,18 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
+// Fail-safe: load the namespaced classes directly. The inline PSR-4
+// autoloader in postieri_api.php (the module init file) only runs when
+// that init file is included by _app_init() in hooks/InitHook.php. If
+// the module row is not yet active in tblmodules — or some other init
+// step blows up before the require_once of our init file — the
+// autoloader is never registered and a `new TokenService(...)` here
+// dies with "Class not found" + a blank page.
+//
+// Including the source files explicitly costs us ~30 KB of code on a
+// cold start and removes one class of mystery blank pages.
+require_once __DIR__ . '/../src/Auth/TokenService.php';
+
 use Perfexcrm\Postieri\Api\Auth\TokenService;
 
 /**
@@ -21,6 +33,10 @@ class Postieri_api extends AdminController
     public function __construct()
     {
         parent::__construct();
+
+        // Debug: log so we can spot blank-page root causes from Plesk logs.
+        log_message('debug', '[postieri_api] admin controller boot, uri=' . ($_SERVER['REQUEST_URI'] ?? '?'));
+
         if (staff_cant('view', 'settings')) {
             access_denied(_l('postieri_api'));
         }
@@ -109,13 +125,18 @@ class Postieri_api extends AdminController
         $data['new_token']    = $this->session->flashdata('postieri_new_token');
         $data['tokens']       = [];
         $data['revoke_url']   = admin_url('postieri_api/tokens');
+        $data['error']        = $this->session->flashdata('postieri_error');
+        $data['success']      = $this->session->flashdata('postieri_success');
 
         try {
             $svc          = new TokenService($this->db);
             $data['tokens'] = $svc->listAll();
         } catch (\Throwable $e) {
-            // Table may not exist yet on first run — leave the list empty.
+            // Table may not exist yet on first run — leave the list empty
+            // and surface the error in the view so the admin can act.
             log_message('error', 'postieri_api::tokens list failed: ' . $e->getMessage());
+            $data['error'] = $data['error'] ?: $e->getMessage();
+            $data['tokens'] = [];
         }
 
         $this->load->view('postieri_api/tokens', $data);
