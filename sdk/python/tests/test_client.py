@@ -2,6 +2,8 @@
 Tests for the postieri_perfex client. Uses a tiny in-process HTTP server
 so we don't need a real Perfex server.
 """
+from __future__ import annotations
+
 import hashlib
 import hmac
 import json

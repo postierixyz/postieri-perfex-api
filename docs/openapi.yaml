@@ -61,14 +61,6 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationFailed" }
-    delete:
-      tags: [auth]
-      summary: Revoke a token
-      parameters:
-        - $ref: "#/components/parameters/IdPath"
-      responses:
-        "204": { description: Revoked }
-        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/auth/tokens:
     get:
@@ -86,6 +78,16 @@ paths:
                   data:
                     type: array
                     items: { $ref: "#/components/schemas/Token" }
+
+  /api/v1/auth/tokens/{id}:
+    delete:
+      tags: [auth]
+      summary: Revoke a token
+      parameters:
+        - $ref: "#/components/parameters/IdPath"
+      responses:
+        "204": { description: Revoked }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/customers:
     get:
@@ -599,7 +601,7 @@ components:
         scopes:
           type: array
           items: { type: string }
-        expires_at: { type: string, format: date-time, nullable: true }
+        expires_at: { type: [string, 'null'], format: date-time }
     TokenResponse:
       type: object
       properties:
@@ -614,7 +616,7 @@ components:
             scopes:
               type: array
               items: { type: string }
-            expires_at: { type: string, format: date-time, nullable: true }
+            expires_at: { type: [string, 'null'], format: date-time }
             warning: { type: string }
     Token:
       type: object
@@ -625,9 +627,9 @@ components:
         scopes:
           type: array
           items: { type: string }
-        last_used_at: { type: string, format: date-time, nullable: true }
-        expires_at: { type: string, format: date-time, nullable: true }
-        revoked_at: { type: string, format: date-time, nullable: true }
+        last_used_at: { type: [string, 'null'], format: date-time }
+        expires_at: { type: [string, 'null'], format: date-time }
+        revoked_at: { type: [string, 'null'], format: date-time }
         created_at: { type: string, format: date-time }
 
     Customer:
@@ -740,13 +742,13 @@ components:
       type: object
       properties:
         id: { type: integer }
-        customer_id: { type: integer, nullable: true }
+        customer_id: { type: [integer, 'null'] }
         name: { type: string }
         description: { type: string }
         starts_at: { type: string, format: date }
         ends_at: { type: string, format: date }
-        stripe_subscription_id: { type: string, nullable: true }
-        customer_company: { type: string, nullable: true }
+        stripe_subscription_id: { type: [string, 'null'] }
+        customer_company: { type: [string, 'null'] }
         days_until_renewal: { type: integer }
         is_active: { type: boolean }
         is_expiring: { type: boolean }
@@ -758,9 +760,9 @@ components:
         id: { type: integer }
         name: { type: string }
         email: { type: string, format: email }
-        company: { type: string, nullable: true }
-        phonenumber: { type: string, nullable: true }
-        title: { type: string, nullable: true }
+        company: { type: [string, 'null'] }
+        phonenumber: { type: [string, 'null'] }
+        title: { type: [string, 'null'] }
         country: { type: integer }
         status: { type: string }
         source: { type: string }
@@ -828,10 +830,10 @@ components:
         webhook_id: { type: integer }
         event: { type: string }
         payload: { type: string }
-        response_status: { type: integer, nullable: true }
-        response_body: { type: string, nullable: true }
+        response_status: { type: [integer, 'null'] }
+        response_body: { type: [string, 'null'] }
         attempt: { type: integer }
-        delivered_at: { type: string, format: date-time, nullable: true }
-        next_retry_at: { type: string, format: date-time, nullable: true }
-        failed_at: { type: string, format: date-time, nullable: true }
+        delivered_at: { type: [string, 'null'], format: date-time }
+        next_retry_at: { type: [string, 'null'], format: date-time }
+        failed_at: { type: [string, 'null'], format: date-time }
         created_at: { type: string, format: date-time }

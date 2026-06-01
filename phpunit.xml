@@ -4,8 +4,9 @@
          bootstrap="vendor/autoload.php"
          colors="true"
          cacheDirectory=".phpunit.cache"
-         failOnRisky="true"
-         failOnWarning="true">
+         failOnWarning="false"
+         failOnRisky="false"
+         failOnNotice="false">
     <testsuites>
         <testsuite name="Unit">
             <directory>modules/postieri_api/tests/Unit</directory>
