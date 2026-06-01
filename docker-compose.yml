@@ -1,67 +1,70 @@
-# Postieri Perfex API — dev environment
+# Postieri Perfex API — Coolify-ready
 #
-# Spins up a full stack: PHP 8.2 + MySQL 8 + the module pre-mounted.
-# Designed for one-command local dev OR deployment to Coolify.
+# Two deployment options:
 #
-# Usage (local):
-#   docker compose up -d
-#   open http://localhost:8080
-#   follow /install to set up Perfex
-#   activate the "Postieri API" module in Setup → Modules
+#   1. SIMPLE — Coolify "Docker Image" service
+#      Image: ghcr.io/postierixyz/postieri-perfex-api:3.4.1
+#      Add a MySQL database via Coolify's "Database" service
+#      Set env vars (see COOLIFY-SETUP.md)
 #
-# Usage (Coolify):
-#   Set the deployment method to "Docker Compose" and point at this file.
-#   Coolify will provision the stack and route traffic.
+#   2. SELF-CONTAINED — Coolify "Docker Compose" service
+#      Paste this file. Both app + MySQL in one stack.
+#
+# ─────────────────────────────────────────────────────────────
+# If you use option 1 (separate MySQL), delete the `db:` service
+# and the `dbdata` volume, and set DB_HOSTNAME=your-mysql-host.
+# ─────────────────────────────────────────────────────────────
 
 services:
   perfex:
     build:
-      context: ./docker
-      dockerfile: Dockerfile
-    image: postierixyz/perfex-dev:3.4.1
+      context: .
+      dockerfile: docker/Dockerfile
+    image: ghcr.io/postierixyz/postieri-perfex-api:3.4.1
     container_name: postieri-perfex-app
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      # Perfex base URL — used for redirects and emails
-      APP_URL: ${APP_URL:-http://localhost:8080}
-      # DB connection
-      DB_HOSTNAME: db
-      DB_USERNAME: perfex
-      DB_PASSWORD: perfexpass
-      DB_NAME: perfex
-      # Cron
+      # ── Perfex base URL ─────────────────────────────────
+      # Coolify will set SERVICE_URL_PERFEX if you map a domain
+      APP_URL: ${SERVICE_URL_PERFEX:-http://localhost:8080}
+      # ── DB connection (point at your MySQL) ─────────────
+      DB_HOSTNAME: ${DB_HOSTNAME:-db}
+      DB_PORT: "3306"
+      DB_USERNAME: ${DB_USERNAME:-perfex}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in Coolify}
+      DB_NAME: ${DB_NAME:-perfex}
+      # ── Cron ────────────────────────────────────────────
       CRON_ENABLED: "true"
     volumes:
-      # Hot-mount our module so changes appear without rebuild
-      - ./modules/postieri_api:/var/www/html/modules/postieri_api
-      # Persistent Perfex data
       - perfex_uploads:/var/www/html/uploads
       - perfex_app:/var/www/html/application/config
-    ports:
-      - "8080:80"
+    # ── No ports exposed ────────────────────────────────
+    # Coolify routes via Traefik based on the domain you set.
+    # If you need to debug, add "ports: ['8080:80']" temporarily.
 
   db:
     image: mysql:8.0
     container_name: postieri-perfex-db
     restart: unless-stopped
-    command: --default-authentication-plugin=mysql_native_password
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
     environment:
-      MYSQL_ROOT_PASSWORD: rootpass
-      MYSQL_DATABASE: perfex
-      MYSQL_USER: perfex
-      MYSQL_PASSWORD: perfexpass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in Coolify}
+      MYSQL_DATABASE: ${DB_NAME:-perfex}
+      MYSQL_USER: ${DB_USERNAME:-perfex}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in Coolify}
     volumes:
-      - dbdata:/var/www/html  # placeholder so docker doesn't complain
+      - dbdata:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
 
 volumes:
   perfex_uploads:
