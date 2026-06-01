@@ -31,12 +31,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Perfexcrm\\Postieri\\Api\\": "modules/postieri_api/src/"
+            "Perfexcrm\\Postieri\\Api\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Perfexcrm\\Postieri\\Api\\Tests\\": "modules/postieri_api/tests/"
+            "Perfexcrm\\Postieri\\Api\\Tests\\": "tests/"
         }
     },
     "config": {
@@ -47,9 +47,9 @@
     },
     "scripts": {
         "test": "phpunit",
-        "analyse": "phpstan analyse modules/postieri_api/src --level=5",
-        "cs-check": "phpcs --standard=PSR12 modules/postieri_api/src",
-        "cs-fix": "phpcbf --standard=PSR12 modules/postieri_api/src"
+        "analyse": "phpstan analyse src controllers libraries models --level=5",
+        "cs-check": "phpcs --standard=PSR12 src controllers libraries models",
+        "cs-fix": "phpcbf --standard=PSR12 src controllers libraries models"
     },
     "minimum-stability": "stable",
     "prefer-stable": true
