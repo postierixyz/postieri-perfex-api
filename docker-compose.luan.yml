@@ -1,0 +1,71 @@
+# Postieri Perfex API — Coolify-ready, Luan's actual Perfex build
+#
+# Uses postierixyz/postieri-perfex-crm-2026 (private, Luan's 3-year-old
+# installation) as the base, then bakes the Postieri API module on top.
+#
+# The GITHUB_TOKEN build arg is required to clone the private Perfex repo.
+# In Coolify, add a build arg called GITHUB_TOKEN with a fine-grained PAT
+# (Contents: Read on postieri-perfex-crm-2026).
+#
+# Usage (Coolify "Docker Image" service):
+#   1. Coolify → + New Resource → Service → Dockerfile
+#   2. Point at this repo
+#   3. Add build arg: GITHUB_TOKEN=<your-PAT>
+#   4. Set environment variables (see below)
+#   5. Map a domain
+#
+# Or paste this docker-compose.yml into Coolify's "Docker Compose" service.
+
+services:
+  perfex:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.perfex-luan
+      args:
+        GITHUB_TOKEN: ${GITHUB_TOKEN:?set GITHUB_TOKEN (PAT with read access to postierixyz/postieri-perfex-crm-2026)}
+        PERFEX_REPO: https://github.com/postierixyz/postieri-perfex-crm-2026.git
+        PERFEX_BRANCH: main
+    image: ghcr.io/postierixyz/postieri-perfex-api-luan:latest
+    container_name: postieri-perfex-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_URL: ${SERVICE_URL_PERFEX:-http://localhost:8080}
+      DB_HOSTNAME: ${DB_HOSTNAME:-db}
+      DB_PORT: "3306"
+      DB_USERNAME: ${DB_USERNAME:-perfex}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in Coolify}
+      DB_NAME: ${DB_NAME:-perfex}
+      CRON_ENABLED: "true"
+    volumes:
+      - perfex_uploads:/var/www/html/uploads
+      - perfex_app:/var/www/html/application/config
+    # No ports exposed — Coolify routes via Traefik.
+
+  db:
+    image: mysql:8.0
+    container_name: postieri-perfex-db
+    restart: unless-stopped
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in Coolify}
+      MYSQL_DATABASE: ${DB_NAME:-perfex}
+      MYSQL_USER: ${DB_USERNAME:-perfex}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in Coolify}
+    volumes:
+      - dbdata:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  perfex_uploads:
+  perfex_app:
+  dbdata:

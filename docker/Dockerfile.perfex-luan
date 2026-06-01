@@ -1,0 +1,93 @@
+# syntax=docker/dockerfile:1.6
+#
+# Luan's actual Perfex 3.4.1 (postierixyz/postieri-perfex-crm-2026) +
+# Postieri API module + Apache. Self-contained, no host volumes.
+#
+# Suitable for Coolify (Dockerfile deploy) or docker-compose.
+#
+# Build context is THIS repo (postieri-perfex-api). The Perfex source is
+# cloned from the private repo at build time using build arg GITHUB_TOKEN.
+
+ARG PERFEX_REPO=https://github.com/postierixyz/postieri-perfex-crm-2026.git
+ARG PERFEX_BRANCH=main
+
+FROM php:8.2-apache
+
+# System dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libzip-dev \
+        libicu-dev \
+        libxml2-dev \
+        libcurl4-openssl-dev \
+        libonig-dev \
+        unzip \
+        git \
+        cron \
+        default-mysql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+# PHP extensions required by Perfex + Postieri API
+RUN docker-php-ext-install -j$(nproc) \
+        mysqli \
+        pdo_mysql \
+        zip \
+        intl \
+        xml \
+        curl \
+        bcmath \
+        mbstring \
+        opcache
+
+# Apache rewrite + headers + .htaccess overrides
+RUN a2enmod rewrite headers
+ENV APACHE_DOCUMENT_ROOT=/var/www/html
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf \
+    && sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+RUN echo '<Directory /var/www/html>\n\
+    Options Indexes FollowSymLinks\n\
+    AllowOverride All\n\
+    Require all granted\n\
+</Directory>' > /etc/apache2/conf-available/perfex-overrides.conf \
+    && a2enconf perfex-overrides
+
+# PHP ini
+RUN { \
+        echo 'memory_limit = 256M'; \
+        echo 'upload_max_filesize = 50M'; \
+        echo 'post_max_size = 50M'; \
+        echo 'max_execution_time = 120'; \
+        echo 'date.timezone = UTC'; \
+        echo 'opcache.enable = 1'; \
+        echo 'opcache.memory_consumption = 128'; \
+        echo 'opcache.interned_strings_buffer = 8'; \
+    } > /usr/local/etc/php/conf.d/perfex.ini
+
+# Clone Luan's Perfex (private repo, requires GITHUB_TOKEN build arg)
+ARG GITHUB_TOKEN
+RUN if [ -n "$GITHUB_TOKEN" ]; then \
+        git clone --depth 1 --branch ${PERFEX_BRANCH} \
+            https://x-access-token:${GITHUB_TOKEN}@${PERFEX_REPO#https://} /var/www/html; \
+    else \
+        git clone --depth 1 --branch ${PERFEX_BRANCH} ${PERFEX_REPO} /var/www/html; \
+    fi \
+    && rm -rf /var/www/html/.git \
+    && mkdir -p /var/www/html/application/config \
+    && chown -R www-data:www-data /var/www/html
+
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Bake the Postieri API module into the image
+# (the module is the entire repo, copied into Perfex's modules directory)
+COPY . /var/www/html/modules/postieri_api
+RUN chown -R www-data:www-data /var/www/html/modules/postieri_api
+
+# Cron for Perfex (subscriptions + webhooks)
+COPY docker/crontab /etc/cron.d/perfex-cron
+RUN chmod 0644 /etc/cron.d/perfex-cron && crontab -u www-data /etc/cron.d/perfex-cron
+
+# Entrypoint: write DB config, run installer if empty DB
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["apache2-foreground"]
