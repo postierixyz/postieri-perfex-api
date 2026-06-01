@@ -10,3 +10,14 @@ parameters:
     excludePaths:
         - tests/*
         - views/*
+    ignoreErrors:
+        # Allow dynamic Perfex query builder chains that return $this
+        # (where(), select(), etc.) without an explicit generic.
+        -
+            message: '#Call to an undefined method .*::(where|select|from|join|order_by|limit|offset|like)\(\)#'
+            path: '*.php'
+        # Allow $this->{property} access on CodeIgniter controller
+        # subclasses ($this->load, $this->input, $this->session, etc.)
+        -
+            message: '#Access to an undefined property [A-Z][a-zA-Z_]*::\$#'
+            path: '*.php'

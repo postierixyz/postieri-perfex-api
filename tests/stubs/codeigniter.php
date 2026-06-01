@@ -62,3 +62,56 @@ if (!function_exists('db_prefix')) {
         return $table;
     }
 }
+
+// CI_Model is the parent of all our models. It exposes $db (the active
+// query builder) and is instantiated by Perfex via load->model(). At
+// static-analysis time PHPStan has no idea this base class exists, so we
+// declare it.
+if (!class_exists('CI_Model', false)) {
+    class CI_Model
+    {
+        public $db;
+        public function __construct()
+        {
+            // In real Perfex: $this->db =& get_instance()->db;
+        }
+    }
+}
+
+// Per-module model fields commonly accessed by our webhook model. Tell
+// PHPStan these are real properties so it doesn't flag $this->table_logs,
+// $this->table_subs, $this->db, etc.
+if (!class_exists('Postieri_webhook_model_typed', false)) {
+    /**
+     * @property string $table      DB table for webhooks
+     * @property string $table_logs DB table for webhook delivery logs
+     * @property string $table_subs DB table for subscriptions (used in cron)
+     */
+    class Postieri_webhook_model_typed extends CI_Model {}
+}
+
+// Perfex global helpers used by the entry point / hooks.
+if (!function_exists('get_option')) {
+    function get_option($name, $default = ''): string
+    {
+        return $default;
+    }
+}
+if (!function_exists('update_option')) {
+    function update_option($name, $value): bool
+    {
+        return true;
+    }
+}
+if (!function_exists('add_option')) {
+    function add_option($name, $value = '', $autoload = 'yes'): bool
+    {
+        return true;
+    }
+}
+if (!function_exists('admin_url')) {
+    function admin_url($path = ''): string
+    {
+        return '/admin/' . ltrim($path, '/');
+    }
+}
