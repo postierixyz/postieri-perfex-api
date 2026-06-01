@@ -20,10 +20,14 @@
             <directory>modules/postieri_api/src</directory>
         </include>
     </source>
-    <coverage>
+    <!--
+      <coverage>
         <report>
-            <html outputDirectory="coverage"/>
-            <text outputFile="php://stdout" showOnlySummary="true"/>
+          <html outputDirectory="coverage"/>
+          <text outputFile="php://stdout" showOnlySummary="true"/>
         </report>
-    </coverage>
+      </coverage>
+      Coverage is disabled in CI until xdebug/pcov is wired up.
+      To enable locally: install xdebug/pcov and uncomment this block.
+    -->
 </phpunit>
