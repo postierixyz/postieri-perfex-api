@@ -15,8 +15,35 @@ Author URI: https://postieri.xyz
 define('POSTIERI_API_VERSION', '0.1.0');
 define('POSTIERI_API_NAMESPACE', 'Perfexcrm\\Postieri\\Api');
 
-// PSR-4 autoload for module classes (Perfex doesn't autoload our src/ by default)
-require_once __DIR__ . '/../../vendor/autoload.php';
+// PSR-4 autoload for our internal classes (Perfex doesn't autoload our
+// `src/` directory on its own).
+//
+// We do NOT require `vendor/autoload.php` because:
+//   1. The module lives in perfex_crm/modules/postieri_api/ — its own
+//      `__DIR__` has no vendor/ folder.
+//   2. Going up two levels lands on Perfex's own vendor/, which is huge
+//      and would re-load Guzzle, Symfony deps, etc. for no reason.
+//   3. A future `composer install` inside this module is still supported
+//      if you add the optional dev dependencies — we just don't pull them
+//      into production.
+//
+// We register a slim PSR-4 autoloader for our namespace
+// (Perfexcrm\Postieri\Api\) that points at `src/`. If you install the
+// module's own vendor/ (composer install), it will take precedence
+// because we register first.
+if (!class_exists('Perfexcrm\\Postieri\\Api\\Http\\Response', false)) {
+    spl_autoload_register(static function (string $class): void {
+        $prefix = 'Perfexcrm\\Postieri\\Api\\';
+        if (strncmp($class, $prefix, strlen($prefix)) !== 0) {
+            return;
+        }
+        $relative = substr($class, strlen($prefix));
+        $file = __DIR__ . '/src/' . str_replace('\\', '/', $relative) . '.php';
+        if (is_file($file)) {
+            require_once $file;
+        }
+    });
+}
 
 // Register module init / hooks
 hooks()->add_action('admin_init', 'postieri_api_module_init');
