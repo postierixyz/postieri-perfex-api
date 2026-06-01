@@ -47,11 +47,15 @@ if (!class_exists('Perfexcrm\\Postieri\\Api\\Http\\Response', false)) {
 
 // Register module init / hooks
 hooks()->add_action('admin_init', 'postieri_api_module_init');
-hooks()->add_action('admin_init', 'postieri_api_register_settings');
 
 // Activation / deactivation
 hooks()->add_action('module_activate_postieri_api', 'postieri_api_activate');
 hooks()->add_action('module_deactivate_postieri_api', 'postieri_api_deactivate');
+
+// Note: settings view was intentionally removed. Per our product
+// decision we expose *only* the token-issuance UI in admin. All other
+// configuration (rate limits, webhooks, default scopes) is managed via
+// the REST API itself, not via a Setup → Settings panel.
 
 // Cron
 hooks()->add_action('after_cron_run', 'postieri_api_subscription_cron');
