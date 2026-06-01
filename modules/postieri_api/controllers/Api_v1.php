@@ -26,7 +26,7 @@ class Api_v1 extends CI_Controller
         parent::__construct();
 
         if (get_option('postieri_api_enabled') !== '1') {
-            Response::error($this, 503, 'api_disabled', 'Postieri API is disabled in settings');
+            Response::error(503, 'api_disabled', 'Postieri API is disabled in settings');
             return;
         }
 
@@ -40,14 +40,14 @@ class Api_v1 extends CI_Controller
         }
 
         if (!$token) {
-            Response::error($this, 401, 'unauthorized', 'Missing Authorization: Bearer <token>');
+            Response::error(401, 'unauthorized', 'Missing Authorization: Bearer <token>');
             return;
         }
 
         $svc = new TokenService($this->db);
         $row = $svc->verify($token);
         if (!$row) {
-            Response::error($this, 401, 'invalid_token', 'Token is invalid, expired, or revoked');
+            Response::error(401, 'invalid_token', 'Token is invalid, expired, or revoked');
             return;
         }
 
@@ -74,12 +74,7 @@ class Api_v1 extends CI_Controller
         if (!$rl['allowed']) {
             $retryAfter = $rl['remaining_min'] === 0 ? 60 : 3600;
             $this->output->set_header('Retry-After: ' . $retryAfter);
-            Response::error(
-                $this,
-                429,
-                'rate_limited',
-                "Rate limit exceeded. Retry after {$retryAfter} seconds.",
-                [
+            Response::error(429, 'rate_limited', "Rate limit exceeded. Retry after {$retryAfter} seconds.", [
                     'retry_after_seconds' => $retryAfter,
                     'limit_per_minute'    => (int) get_option('postieri_api_rate_limit_per_min'),
                     'limit_per_hour'      => (int) get_option('postieri_api_rate_limit_per_hour'),
@@ -120,7 +115,7 @@ class Api_v1 extends CI_Controller
     protected function requireScope(string $scope): bool
     {
         if (!$this->hasScope($scope)) {
-            Response::error($this, 403, 'insufficient_scope', "Missing required scope: {$scope}", [
+            Response::error(403, 'insufficient_scope', "Missing required scope: {$scope}", [
                 'required_scope' => $scope,
                 'token_scopes'   => $this->scopes,
             ]);

@@ -40,7 +40,7 @@ class Invoices extends Api_v1
         ]));
         $total = $this->db->where($where)->count_all_results(db_prefix() . 'invoices');
 
-        Response::ok($this, array_map([$this, 'present'], $rows), [
+        Response::ok(array_map([$this, 'present'], $rows), [
             'pagination' => [
                 'page'        => $pag['page'],
                 'per_page'    => $pag['per_page'],
@@ -57,17 +57,17 @@ class Invoices extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Invoice id is required');
+            Response::error(400, 'validation_failed', 'Invoice id is required');
             return;
         }
         $inv = $this->model()->get((int) $id);
         if (!$inv) {
-            Response::error($this, 404, 'not_found', "Invoice {$id} not found");
+            Response::error(404, 'not_found', "Invoice {$id} not found");
             return;
         }
         $items = $this->model()->get_invoice_items($inv->id);
         $payments = $this->model()->get_invoice_payments($inv->id);
-        Response::ok($this, $this->present($inv, true) + [
+        Response::ok($this->present($inv, true) + [
             'items'    => $items,
             'payments' => $payments,
         ]);
@@ -83,7 +83,7 @@ class Invoices extends Api_v1
         $required = ['customer_id', 'date', 'due_date'];
         $missing = array_values(array_filter($required, fn($k) => empty($b[$k])));
         if ($missing) {
-            Response::error($this, 422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
+            Response::error(422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
             return;
         }
         // Add items if provided
@@ -94,7 +94,7 @@ class Invoices extends Api_v1
         }
         $invoiceId = $this->model()->add($b);
         if (!$invoiceId) {
-            Response::error($this, 422, 'create_failed', 'Failed to create invoice', ['db_error' => $this->db->error()]);
+            Response::error(422, 'create_failed', 'Failed to create invoice', ['db_error' => $this->db->error()]);
             return;
         }
 
@@ -102,7 +102,7 @@ class Invoices extends Api_v1
         $this->dispatch('invoice.created', ['invoice_id' => $invoiceId, 'customer_id' => $b['customer_id']]);
 
         $inv = $this->model()->get($invoiceId);
-        Response::created($this, $this->present($inv, true));
+        Response::created($this->present($inv, true));
     }
 
     /** PUT /api/v1/invoices/{id} */
@@ -112,12 +112,12 @@ class Invoices extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Invoice id is required');
+            Response::error(400, 'validation_failed', 'Invoice id is required');
             return;
         }
         $inv = $this->model()->get((int) $id);
         if (!$inv) {
-            Response::error($this, 404, 'not_found', "Invoice {$id} not found");
+            Response::error(404, 'not_found', "Invoice {$id} not found");
             return;
         }
         $b = $this->jsonBody();
@@ -125,7 +125,7 @@ class Invoices extends Api_v1
         $wasStatus = (int) $inv->status;
         $ok = $this->model()->update($b, (int) $id);
         if (!$ok) {
-            Response::error($this, 422, 'update_failed', 'Failed to update invoice');
+            Response::error(422, 'update_failed', 'Failed to update invoice');
             return;
         }
         // Re-read and detect status change
@@ -137,7 +137,7 @@ class Invoices extends Api_v1
                 'total'       => (float) $inv2->total,
             ]);
         }
-        Response::ok($this, $this->present($inv2, true));
+        Response::ok($this->present($inv2, true));
     }
 
     /**
@@ -151,18 +151,18 @@ class Invoices extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Invoice id is required');
+            Response::error(400, 'validation_failed', 'Invoice id is required');
             return;
         }
         $inv = $this->model()->get((int) $id);
         if (!$inv) {
-            Response::error($this, 404, 'not_found', "Invoice {$id} not found");
+            Response::error(404, 'not_found', "Invoice {$id} not found");
             return;
         }
         try {
             $pdf = $this->model()->get_invoice_pdf((int) $id);
         } catch (\Throwable $e) {
-            Response::error($this, 500, 'pdf_failed', $e->getMessage());
+            Response::error(500, 'pdf_failed', $e->getMessage());
             return;
         }
         $this->output

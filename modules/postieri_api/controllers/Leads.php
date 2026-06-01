@@ -53,7 +53,7 @@ class Leads extends Api_v1
             ->result_array();
         $total = $this->db->count_all_results(db_prefix() . 'leads', false);
 
-        Response::ok($this, array_map([$this, 'present'], $rows), [
+        Response::ok(array_map([$this, 'present'], $rows), [
             'pagination' => [
                 'page'        => $pag['page'],
                 'per_page'    => $pag['per_page'],
@@ -70,15 +70,15 @@ class Leads extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Lead id is required');
+            Response::error(400, 'validation_failed', 'Lead id is required');
             return;
         }
         $lead = $this->model()->get((int) $id);
         if (!$lead) {
-            Response::error($this, 404, 'not_found', "Lead {$id} not found");
+            Response::error(404, 'not_found', "Lead {$id} not found");
             return;
         }
-        Response::ok($this, $this->present($lead, true));
+        Response::ok($this->present($lead, true));
     }
 
     /** POST /api/v1/leads */
@@ -91,18 +91,18 @@ class Leads extends Api_v1
         $required = ['name', 'email'];
         $missing = array_values(array_filter($required, fn($k) => empty($b[$k])));
         if ($missing) {
-            Response::error($this, 422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
+            Response::error(422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
             return;
         }
         $leadId = $this->model()->add($b);
         if (!$leadId) {
-            Response::error($this, 422, 'create_failed', 'Failed to create lead', ['db_error' => $this->db->error()]);
+            Response::error(422, 'create_failed', 'Failed to create lead', ['db_error' => $this->db->error()]);
             return;
         }
         $this->dispatch('lead.created', ['lead_id' => $leadId, 'email' => $b['email']]);
 
         $lead = $this->model()->get($leadId);
-        Response::created($this, $this->present($lead, true));
+        Response::created($this->present($lead, true));
     }
 
     /** PUT /api/v1/leads/{id} */
@@ -112,21 +112,21 @@ class Leads extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Lead id is required');
+            Response::error(400, 'validation_failed', 'Lead id is required');
             return;
         }
         if (!$this->model()->get((int) $id)) {
-            Response::error($this, 404, 'not_found', "Lead {$id} not found");
+            Response::error(404, 'not_found', "Lead {$id} not found");
             return;
         }
         $b = $this->jsonBody();
         $ok = $this->model()->update($b, (int) $id);
         if (!$ok) {
-            Response::error($this, 422, 'update_failed', 'Failed to update lead');
+            Response::error(422, 'update_failed', 'Failed to update lead');
             return;
         }
         $lead = $this->model()->get((int) $id);
-        Response::ok($this, $this->present($lead, true));
+        Response::ok($this->present($lead, true));
     }
 
     /** DELETE /api/v1/leads/{id} */
@@ -136,19 +136,19 @@ class Leads extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Lead id is required');
+            Response::error(400, 'validation_failed', 'Lead id is required');
             return;
         }
         if (!$this->model()->get((int) $id)) {
-            Response::error($this, 404, 'not_found', "Lead {$id} not found");
+            Response::error(404, 'not_found', "Lead {$id} not found");
             return;
         }
         $ok = $this->model()->delete((int) $id, true);
         if (!$ok) {
-            Response::error($this, 422, 'delete_failed', 'Failed to delete lead');
+            Response::error(422, 'delete_failed', 'Failed to delete lead');
             return;
         }
-        Response::noContent($this);
+        Response::noContent();
     }
 
     /**
@@ -161,16 +161,16 @@ class Leads extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Lead id is required');
+            Response::error(400, 'validation_failed', 'Lead id is required');
             return;
         }
         $lead = $this->model()->get((int) $id);
         if (!$lead) {
-            Response::error($this, 404, 'not_found', "Lead {$id} not found");
+            Response::error(404, 'not_found', "Lead {$id} not found");
             return;
         }
         if ((int) $lead->is_lead == 0) {
-            Response::error($this, 409, 'already_converted', "Lead {$id} has already been converted", [
+            Response::error(409, 'already_converted', "Lead {$id} has already been converted", [
                 'customer_id' => (int) $lead->client_id ?? null,
             ]);
             return;
@@ -178,7 +178,7 @@ class Leads extends Api_v1
 
         $customerId = $this->model()->mark_as_customer((int) $id);
         if (!$customerId) {
-            Response::error($this, 422, 'conversion_failed', 'Failed to convert lead to customer');
+            Response::error(422, 'conversion_failed', 'Failed to convert lead to customer');
             return;
         }
         $this->dispatch('lead.converted', [
@@ -186,9 +186,8 @@ class Leads extends Api_v1
             'customer_id' => (int) $customerId,
         ]);
 
-        Response::ok($this, [
-            'lead_id'     => (int) $id,
-            'customer_id' => (int) $customerId,
+        Response::ok([
+            'lead_id'     => (int) $id, 'customer_id' => (int) $customerId,
             'status'      => 'converted',
         ]);
     }

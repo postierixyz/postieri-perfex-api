@@ -53,7 +53,7 @@ class Subscriptions extends Api_v1
             $out = array_values(array_filter($out, fn($r) => $r['is_' . $status] === true));
         }
 
-        Response::ok($this, $out, [
+        Response::ok($out, [
             'pagination' => [
                 'page'        => $pag['page'],
                 'per_page'    => $pag['per_page'],
@@ -70,7 +70,7 @@ class Subscriptions extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Subscription id is required');
+            Response::error(400, 'validation_failed', 'Subscription id is required');
             return;
         }
         $row = $this->db
@@ -81,7 +81,7 @@ class Subscriptions extends Api_v1
             ->get()
             ->row_array();
         if (!$row) {
-            Response::error($this, 404, 'not_found', "Subscription {$id} not found");
+            Response::error(404, 'not_found', "Subscription {$id} not found");
             return;
         }
         $end = strtotime($row['ends_at'] ?? '1970-01-01');
@@ -89,6 +89,6 @@ class Subscriptions extends Api_v1
         $row['is_active']    = $end > time();
         $row['is_expiring']  = $end > time() && $row['days_until_renewal'] <= 14;
         $row['is_expired']   = $end <= time();
-        Response::ok($this, $row);
+        Response::ok($row);
     }
 }

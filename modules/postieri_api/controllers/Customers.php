@@ -38,7 +38,7 @@ class Customers extends Api_v1
             $total = $this->model()->total_clients();
         }
 
-        Response::ok($this, array_map([$this, 'present'], $rows), [
+        Response::ok(array_map([$this, 'present'], $rows), [
             'pagination' => [
                 'page'        => $pag['page'],
                 'per_page'    => $pag['per_page'],
@@ -55,12 +55,12 @@ class Customers extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Customer id is required');
+            Response::error(400, 'validation_failed', 'Customer id is required');
             return;
         }
         $c = $this->model()->get((int) $id);
         if (!$c) {
-            Response::error($this, 404, 'not_found', "Customer {$id} not found");
+            Response::error(404, 'not_found', "Customer {$id} not found");
             return;
         }
 
@@ -68,7 +68,7 @@ class Customers extends Api_v1
         $this->load->model('contacts_model');
         $contacts = $this->contacts_model->get_contacts($c->userid);
 
-        Response::ok($this, $this->present($c, true) + [
+        Response::ok($this->present($c, true) + [
             'contacts' => array_map(function ($c) {
                 return [
                     'id'         => (int) $c['id'],
@@ -92,17 +92,17 @@ class Customers extends Api_v1
         $required = ['company', 'firstname', 'lastname', 'email', 'password'];
         $missing = array_values(array_filter($required, fn($k) => empty($b[$k])));
         if ($missing) {
-            Response::error($this, 422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
+            Response::error(422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
             return;
         }
 
         $customer_id = $this->model()->add($b);
         if (!$customer_id) {
-            Response::error($this, 422, 'create_failed', 'Failed to create customer', ['db_error' => $this->db->error()]);
+            Response::error(422, 'create_failed', 'Failed to create customer', ['db_error' => $this->db->error()]);
             return;
         }
         $c = $this->model()->get($customer_id);
-        Response::created($this, $this->present($c, true));
+        Response::created($this->present($c, true));
     }
 
     /** PUT /api/v1/customers/{id} */
@@ -112,21 +112,21 @@ class Customers extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Customer id is required');
+            Response::error(400, 'validation_failed', 'Customer id is required');
             return;
         }
         if (!$this->model()->get((int) $id)) {
-            Response::error($this, 404, 'not_found', "Customer {$id} not found");
+            Response::error(404, 'not_found', "Customer {$id} not found");
             return;
         }
         $b = $this->jsonBody();
         $ok = $this->model()->update($b, (int) $id);
         if (!$ok) {
-            Response::error($this, 422, 'update_failed', 'Failed to update customer');
+            Response::error(422, 'update_failed', 'Failed to update customer');
             return;
         }
         $c = $this->model()->get((int) $id);
-        Response::ok($this, $this->present($c, true));
+        Response::ok($this->present($c, true));
     }
 
     /** DELETE /api/v1/customers/{id} */
@@ -136,19 +136,19 @@ class Customers extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Customer id is required');
+            Response::error(400, 'validation_failed', 'Customer id is required');
             return;
         }
         if (!$this->model()->get((int) $id)) {
-            Response::error($this, 404, 'not_found', "Customer {$id} not found");
+            Response::error(404, 'not_found', "Customer {$id} not found");
             return;
         }
         $ok = $this->model()->delete((int) $id);
         if (!$ok) {
-            Response::error($this, 422, 'delete_failed', 'Failed to delete customer');
+            Response::error(422, 'delete_failed', 'Failed to delete customer');
             return;
         }
-        Response::noContent($this);
+        Response::noContent();
     }
 
     /**

@@ -27,16 +27,14 @@ class Auth extends CI_Controller
         // --- Flow A: admin path ---
         if (!empty($input['user_id']) && !empty($input['name'])) {
             if (!is_admin()) {
-                Response::error($this, 403, 'forbidden', 'Only admins can issue tokens for other users');
+                Response::error(403, 'forbidden', 'Only admins can issue tokens for other users');
                 return;
             }
             $issued = $svc->issue(
-                (int) $input['user_id'],
-                $input['name'],
+                (int) $input['user_id'], $input['name'],
                 $input['scopes'] ?? ['*'],
-                $input['expires_at'] ?? null
-            );
-            Response::created($this, [
+                $input['expires_at'] ?? null);
+            Response::created([
                 'id'         => $issued['id'],
                 'token'      => $issued['token'],
                 'user_id'    => (int) $input['user_id'],
@@ -55,11 +53,11 @@ class Auth extends CI_Controller
 
             $user = $this->db->where('email', $email)->get(db_prefix() . 'staff')->row_array();
             if (!$user || !app_hasher()->CheckPassword($password, $user['password'])) {
-                Response::error($this, 401, 'invalid_credentials', 'Email or password is incorrect');
+                Response::error(401, 'invalid_credentials', 'Email or password is incorrect');
                 return;
             }
             if ((int) $user['active'] !== 1) {
-                Response::error($this, 403, 'inactive_user', 'User account is not active');
+                Response::error(403, 'inactive_user', 'User account is not active');
                 return;
             }
 
@@ -68,7 +66,7 @@ class Auth extends CI_Controller
                 $name,
                 json_decode(get_option('postieri_api_default_token_scopes') ?: '["*"]', true) ?: ['*']
             );
-            Response::created($this, [
+            Response::created([
                 'id'         => $issued['id'],
                 'token'      => $issued['token'],
                 'user_id'    => (int) $user['staffid'],
@@ -79,11 +77,7 @@ class Auth extends CI_Controller
             return;
         }
 
-        Response::error(
-            $this,
-            400,
-            'validation_failed',
-            'Provide either {user_id, name, scopes} (admin) or {email, password} (self-service)',
+        Response::error(400, 'validation_failed', 'Provide either {user_id, name, scopes} (admin) or {email, password} (self-service)',
             ['required_any_of' => [
                 ['user_id', 'name'],
                 ['email', 'password'],
@@ -97,18 +91,18 @@ class Auth extends CI_Controller
     public function delete_token($id = null): void
     {
         if (!is_admin()) {
-            Response::error($this, 403, 'forbidden', 'Only admins can revoke tokens');
+            Response::error(403, 'forbidden', 'Only admins can revoke tokens');
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Token id is required');
+            Response::error(400, 'validation_failed', 'Token id is required');
             return;
         }
         $svc = new TokenService($this->db);
         if ($svc->revoke((int) $id)) {
-            Response::noContent($this);
+            Response::noContent();
         } else {
-            Response::error($this, 500, 'revoke_failed', 'Failed to revoke token');
+            Response::error(500, 'revoke_failed', 'Failed to revoke token');
         }
     }
 
@@ -118,10 +112,10 @@ class Auth extends CI_Controller
     public function list_tokens(): void
     {
         if (!is_admin()) {
-            Response::error($this, 403, 'forbidden', 'Only admins can list tokens');
+            Response::error(403, 'forbidden', 'Only admins can list tokens');
             return;
         }
         $svc = new TokenService($this->db);
-        Response::ok($this, $svc->listAll());
+        Response::ok($svc->listAll());
     }
 }

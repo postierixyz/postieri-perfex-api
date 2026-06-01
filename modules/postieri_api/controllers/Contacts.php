@@ -50,7 +50,7 @@ class Contacts extends Api_v1
             ->result_array();
         $total = $this->db->count_all_results(db_prefix() . 'contacts', false);
 
-        Response::ok($this, array_map([$this, 'present'], $rows), [
+        Response::ok(array_map([$this, 'present'], $rows), [
             'pagination' => [
                 'page'        => $pag['page'],
                 'per_page'    => $pag['per_page'],
@@ -67,15 +67,15 @@ class Contacts extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Contact id is required');
+            Response::error(400, 'validation_failed', 'Contact id is required');
             return;
         }
         $c = $this->model()->get((int) $id);
         if (!$c) {
-            Response::error($this, 404, 'not_found', "Contact {$id} not found");
+            Response::error(404, 'not_found', "Contact {$id} not found");
             return;
         }
-        Response::ok($this, $this->present($c));
+        Response::ok($this->present($c));
     }
 
     /** POST /api/v1/contacts */
@@ -88,17 +88,17 @@ class Contacts extends Api_v1
         $required = ['customer_id', 'firstname', 'lastname', 'email', 'password'];
         $missing = array_values(array_filter($required, fn($k) => empty($b[$k])));
         if ($missing) {
-            Response::error($this, 422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
+            Response::error(422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
             return;
         }
         $b['userid'] = (int) $b['customer_id'];
         $contactId = $this->model()->add($b);
         if (!$contactId) {
-            Response::error($this, 422, 'create_failed', 'Failed to create contact');
+            Response::error(422, 'create_failed', 'Failed to create contact');
             return;
         }
         $c = $this->model()->get($contactId);
-        Response::created($this, $this->present($c));
+        Response::created($this->present($c));
     }
 
     /** PUT /api/v1/contacts/{id} */
@@ -108,21 +108,21 @@ class Contacts extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Contact id is required');
+            Response::error(400, 'validation_failed', 'Contact id is required');
             return;
         }
         if (!$this->model()->get((int) $id)) {
-            Response::error($this, 404, 'not_found', "Contact {$id} not found");
+            Response::error(404, 'not_found', "Contact {$id} not found");
             return;
         }
         $b = $this->jsonBody();
         $ok = $this->model()->update($b, (int) $id);
         if (!$ok) {
-            Response::error($this, 422, 'update_failed', 'Failed to update contact');
+            Response::error(422, 'update_failed', 'Failed to update contact');
             return;
         }
         $c = $this->model()->get((int) $id);
-        Response::ok($this, $this->present($c));
+        Response::ok($this->present($c));
     }
 
     /** DELETE /api/v1/contacts/{id} */
@@ -132,19 +132,19 @@ class Contacts extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Contact id is required');
+            Response::error(400, 'validation_failed', 'Contact id is required');
             return;
         }
         if (!$this->model()->get((int) $id)) {
-            Response::error($this, 404, 'not_found', "Contact {$id} not found");
+            Response::error(404, 'not_found', "Contact {$id} not found");
             return;
         }
         $ok = $this->model()->delete((int) $id);
         if (!$ok) {
-            Response::error($this, 422, 'delete_failed', 'Failed to delete contact');
+            Response::error(422, 'delete_failed', 'Failed to delete contact');
             return;
         }
-        Response::noContent($this);
+        Response::noContent();
     }
 
     private function present($c): array

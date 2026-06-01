@@ -8,99 +8,73 @@ use PHPUnit\Framework\TestCase;
 use Perfexcrm\Postieri\Api\Http\Response;
 
 /**
- * Tests for the Response envelope.
+ * Tests for the Response value object.
  *
- * Note: these tests mock CI_Controller to assert on set_status_header,
- * set_content_type and set_output calls. We use a small in-test recorder
- * to capture the calls.
+ * Uses the static ::setEmitter() seam to capture responses without
+ * needing a CodeIgniter instance.
  */
 final class ResponseTest extends TestCase
 {
+    private array $captured = [];
+
+    protected function setUp(): void
+    {
+        $this->captured = [];
+        Response::setEmitter(function (Response $r): void {
+            $this->captured[] = [
+                'status' => $r->statusCode,
+                'body'   => $r->body,
+            ];
+        });
+    }
+
+    protected function tearDown(): void
+    {
+        Response::setEmitter(null);
+    }
+
     public function testOkProduces200WithEnvelope(): void
     {
-        $ci = $this->makeCI();
-        Response::ok($ci, ['id' => 1, 'name' => 'Acme'], ['page' => 1]);
-
-        $this->assertSame(200, $ci->output->status);
-        $this->assertStringContainsString('application/json', $ci->output->contentType);
-
-        $body = json_decode($ci->output->body, true);
-        $this->assertTrue($body['status']);
-        $this->assertSame(['id' => 1, 'name' => 'Acme'], $body['data']);
-        $this->assertSame(['page' => 1], (array) $body['meta']);
+        Response::ok(['id' => 1]);
+        $this->assertCount(1, $this->captured);
+        $this->assertSame(200, $this->captured[0]['status']);
+        $this->assertSame(['status' => true, 'data' => ['id' => 1]], $this->captured[0]['body']);
     }
 
     public function testCreatedProduces201(): void
     {
-        $ci = $this->makeCI();
-        Response::created($ci, ['id' => 42]);
-        $this->assertSame(201, $ci->output->status);
-        $body = json_decode($ci->output->body, true);
-        $this->assertTrue($body['status']);
-        $this->assertSame(42, $body['data']['id']);
+        Response::created(['id' => 42]);
+        $this->assertSame(201, $this->captured[0]['status']);
+        $this->assertSame(['status' => true, 'data' => ['id' => 42]], $this->captured[0]['body']);
     }
 
-    public function testNoContentProduces204(): void
+    public function testNoContentProduces204WithNullBody(): void
     {
-        $ci = $this->makeCI();
-        Response::noContent($ci);
-        $this->assertSame(204, $ci->output->status);
+        Response::noContent();
+        $this->assertSame(204, $this->captured[0]['status']);
+        $this->assertNull($this->captured[0]['body']);
     }
 
     public function testErrorProducesErrorEnvelope(): void
     {
-        $ci = $this->makeCI();
-        Response::error($ci, 401, 'unauthorized', 'Missing token', ['hint' => 'Bearer auth required']);
-
-        $this->assertSame(401, $ci->output->status);
-        $body = json_decode($ci->output->body, true);
-        $this->assertFalse($body['status']);
-        $this->assertSame('unauthorized', $body['error']['code']);
-        $this->assertSame('Missing token', $body['error']['message']);
-        $this->assertSame(['hint' => 'Bearer auth required'], (array) $body['error']['details']);
+        Response::error(422, 'validation_failed', 'Email is required', ['field' => 'email']);
+        $this->assertSame(422, $this->captured[0]['status']);
+        $this->assertFalse($this->captured[0]['body']['status']);
+        $this->assertSame('validation_failed', $this->captured[0]['body']['error']['code']);
+        $this->assertSame('Email is required', $this->captured[0]['body']['error']['message']);
+        $this->assertSame(['field' => 'email'], $this->captured[0]['body']['error']['details']);
     }
 
-    public function testUnescapedUnicode(): void
+    public function testErrorOmitsNullDetails(): void
     {
-        $ci = $this->makeCI();
-        Response::ok($ci, ['name' => 'Kompania Shqiptare']);
-        // The raw body should contain the unicode characters as-is, not \uXXXX escapes
-        $this->assertStringContainsString('Kompania Shqiptare', $ci->output->body);
-        $this->assertStringNotContainsString('\u', $ci->output->body);
+        Response::error(401, 'unauthorized', 'Missing token');
+        $this->assertArrayNotHasKey('details', $this->captured[0]['body']['error']);
     }
 
-    /**
-     * Build a minimal stand-in for CI_Controller that records output calls.
-     */
-    private function makeCI(): object
+    public function testOkWithMeta(): void
     {
-        return new class {
-            public object $output;
-
-            public function __construct()
-            {
-                $this->output = new class {
-                    public int $status = 200;
-                    public string $contentType = '';
-                    public string $body = '';
-
-                    public function set_status_header(int $code): self
-                    {
-                        $this->status = $code;
-                        return $this;
-                    }
-                    public function set_content_type(string $type, string $charset = 'utf-8'): self
-                    {
-                        $this->contentType = $type;
-                        return $this;
-                    }
-                    public function set_output(string $body): self
-                    {
-                        $this->body = $body;
-                        return $this;
-                    }
-                };
-            }
-        };
+        Response::ok([1, 2, 3], ['page' => 1, 'per_page' => 25, 'total' => 3]);
+        $body = $this->captured[0]['body'];
+        $this->assertSame(['page' => 1, 'per_page' => 25, 'total' => 3], $body['meta']);
     }
 }

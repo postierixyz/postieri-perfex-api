@@ -84,8 +84,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate OpenAPI spec
-        uses: redocly/cli-action@v1
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          spec: docs/openapi.yaml
-          args: lint
+          node-version: "20"
+
+      - name: Validate OpenAPI spec with redocly
+        run: |
+          npm install -g @redocly/cli@latest
+          redocly lint docs/openapi.yaml

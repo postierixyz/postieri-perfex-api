@@ -2,90 +2,98 @@
 
 namespace Perfexcrm\Postieri\Api\Http;
 
-use CI_Controller;
-
 /**
  * Standardised JSON response envelope.
  *
  *   { "status": true,  "data": ..., "meta": {...} }            // success
- *   { "status": false, "error": { "code", "message", "details" } }  // error
+ *   { "status": false, "error": { "code": "...", ... } }        // error
+ *
+ * Returned as a value object from controllers; emit it with ->send()
+ * (which writes the HTTP status header + JSON body via CodeIgniter's
+ * output class). Tests can inspect the value object without needing a
+ * real CI_Controller — the static ::setEmitter() hook lets them capture.
  */
 final class Response
 {
-    /**
-     * 200 OK with optional data + meta.
-     */
-    public static function ok(CI_Controller $CI, mixed $data = null, array $meta = []): void
+    public int $statusCode = 200;
+    /** @var array{status:bool,data?:mixed,meta?:array,error?:array}|null */
+    public ?array $body = null;
+
+    /** @var callable|null Test hook: fn(self $r): void */
+    public static $emitter = null;
+
+    public static function ok(mixed $data, ?array $meta = null, int $status = 200): self
     {
-        $CI->output
-            ->set_status_header(200)
-            ->set_content_type('application/json', 'utf-8')
-            ->set_output(self::encode(['status' => true, 'data' => $data, 'meta' => (object) $meta]));
+        $r = new self();
+        $r->statusCode = $status;
+        $r->body = ['status' => true, 'data' => $data];
+        if ($meta !== null) $r->body['meta'] = $meta;
+        $r->emit();
+        return $r;
     }
 
-    /**
-     * 201 Created with the created resource.
-     */
-    public static function created(CI_Controller $CI, mixed $data = null, array $meta = []): void
+    public static function created(mixed $data, ?array $meta = null): self
     {
-        $CI->output
-            ->set_status_header(201)
-            ->set_content_type('application/json', 'utf-8')
-            ->set_output(self::encode(['status' => true, 'data' => $data, 'meta' => (object) $meta]));
+        return self::ok($data, $meta, 201);
     }
 
-    /**
-     * 202 Accepted (for async jobs).
-     */
-    public static function accepted(CI_Controller $CI, mixed $data = null): void
+    public static function noContent(int $status = 204): self
     {
-        $CI->output
-            ->set_status_header(202)
-            ->set_content_type('application/json', 'utf-8')
-            ->set_output(self::encode(['status' => true, 'data' => $data]));
+        $r = new self();
+        $r->statusCode = $status;
+        $r->body = null;
+        $r->emit();
+        return $r;
     }
 
-    /**
-     * 204 No Content (e.g. successful DELETE).
-     */
-    public static function noContent(CI_Controller $CI): void
-    {
-        $CI->output->set_status_header(204);
-    }
-
-    /**
-     * Generic error response.
-     *
-     * @param int    $httpStatus HTTP status code (400, 401, 403, 404, 409, 422, 429, 500, 503)
-     * @param string $code       machine-readable error code (e.g. "unauthorized")
-     * @param string $message    human-readable message
-     * @param array  $details    optional validation details / context
-     */
     public static function error(
-        CI_Controller $CI,
         int $httpStatus,
         string $code,
         string $message,
-        array $details = []
-    ): void {
-        $CI->output
-            ->set_status_header($httpStatus)
-            ->set_content_type('application/json', 'utf-8')
-            ->set_output(self::encode([
-                'status' => false,
-                'error'  => [
+        ?array $details = null
+    ): self {
+        $r = new self();
+        $r->statusCode = $httpStatus;
+        $r->body = [
+            'status' => false,
+            'error'  => array_filter(
+                [
                     'code'    => $code,
                     'message' => $message,
-                    'details' => (object) $details,
+                    'details' => $details,
                 ],
-            ]));
+                static fn ($v) => $v !== null
+            ),
+        ];
+        $r->emit();
+        return $r;
     }
 
-    private static function encode(array $payload): string
+    /**
+     * Emit the response. In production this writes to CodeIgniter's
+     * Output class. In tests, capture via ::setEmitter().
+     */
+    public function emit(): void
     {
-        return json_encode(
-            $payload,
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION
-        );
+        if (self::$emitter !== null) {
+            (self::$emitter)($this);
+            return;
+        }
+        $CI = &get_instance();
+        $CI->output->set_status_header($this->statusCode);
+        if ($this->body !== null) {
+            $CI->output
+                ->set_content_type('application/json', 'utf-8')
+                ->set_output(json_encode(
+                    $this->body,
+                    JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                ));
+        }
+    }
+
+    /** @internal Test seam. */
+    public static function setEmitter(?callable $cb): void
+    {
+        self::$emitter = $cb;
     }
 }

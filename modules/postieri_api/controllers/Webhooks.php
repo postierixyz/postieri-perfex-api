@@ -26,7 +26,7 @@ class Webhooks extends Api_v1
             return;
         }
         $rows = $this->postieri_webhook_model->all();
-        Response::ok($this, array_map([$this, 'present'], $rows));
+        Response::ok(array_map([$this, 'present'], $rows));
     }
 
     /** GET /api/v1/webhooks/{id} */
@@ -36,15 +36,15 @@ class Webhooks extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Webhook id is required');
+            Response::error(400, 'validation_failed', 'Webhook id is required');
             return;
         }
         $row = $this->postieri_webhook_model->find((int) $id);
         if (!$row) {
-            Response::error($this, 404, 'not_found', "Webhook {$id} not found");
+            Response::error(404, 'not_found', "Webhook {$id} not found");
             return;
         }
-        Response::ok($this, $this->present($row, true));
+        Response::ok($this->present($row, true));
     }
 
     /** POST /api/v1/webhooks */
@@ -57,23 +57,22 @@ class Webhooks extends Api_v1
         $required = ['name', 'url', 'events'];
         $missing = array_values(array_filter($required, fn($k) => empty($b[$k])));
         if ($missing) {
-            Response::error($this, 422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
+            Response::error(422, 'validation_failed', 'Missing required fields', ['missing' => $missing]);
             return;
         }
         if (!is_array($b['events'])) {
-            Response::error($this, 422, 'validation_failed', 'events must be an array');
+            Response::error(422, 'validation_failed', 'events must be an array');
             return;
         }
         $id = $this->postieri_webhook_model->create([
-            'name'       => $b['name'],
-            'url'        => $b['url'],
+            'name'       => $b['name'], 'url'        => $b['url'],
             'events'     => array_values($b['events']),
             'secret'     => $b['secret'] ?? bin2hex(random_bytes(32)),
             'is_active'  => isset($b['is_active']) ? (int) (bool) $b['is_active'] : 1,
             'created_by' => (int) $this->token['user_id'],
         ]);
         $row = $this->postieri_webhook_model->find($id);
-        Response::created($this, $this->present($row, true) + [
+        Response::created($this->present($row, true) + [
             'warning' => 'The secret is shown only on creation and update. Store it securely.',
         ]);
     }
@@ -85,12 +84,12 @@ class Webhooks extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Webhook id is required');
+            Response::error(400, 'validation_failed', 'Webhook id is required');
             return;
         }
         $row = $this->postieri_webhook_model->find((int) $id);
         if (!$row) {
-            Response::error($this, 404, 'not_found', "Webhook {$id} not found");
+            Response::error(404, 'not_found', "Webhook {$id} not found");
             return;
         }
         $b = $this->jsonBody();
@@ -102,7 +101,7 @@ class Webhooks extends Api_v1
             $this->postieri_webhook_model->update((int) $id, $patch);
         }
         $row = $this->postieri_webhook_model->find((int) $id);
-        Response::ok($this, $this->present($row, true));
+        Response::ok($this->present($row, true));
     }
 
     /** DELETE /api/v1/webhooks/{id} */
@@ -112,15 +111,15 @@ class Webhooks extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Webhook id is required');
+            Response::error(400, 'validation_failed', 'Webhook id is required');
             return;
         }
         $ok = $this->postieri_webhook_model->delete((int) $id);
         if (!$ok) {
-            Response::error($this, 404, 'not_found', "Webhook {$id} not found");
+            Response::error(404, 'not_found', "Webhook {$id} not found");
             return;
         }
-        Response::noContent($this);
+        Response::noContent();
     }
 
     /**
@@ -132,13 +131,13 @@ class Webhooks extends Api_v1
             return;
         }
         if (!$id) {
-            Response::error($this, 400, 'validation_failed', 'Webhook id is required');
+            Response::error(400, 'validation_failed', 'Webhook id is required');
             return;
         }
         $pag = $this->pagination();
         $rows = $this->postieri_webhook_model->deliveries((int) $id, $pag['per_page'], $pag['offset']);
         $total = $this->postieri_webhook_model->count_deliveries((int) $id);
-        Response::ok($this, $rows, [
+        Response::ok($rows, [
             'pagination' => [
                 'page'        => $pag['page'],
                 'per_page'    => $pag['per_page'],

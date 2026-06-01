@@ -80,19 +80,26 @@ class _Resource:
     def _delete(self, path: str) -> None:
         self._c._delete(path)
 
+    @staticmethod
+    def _unwrap(envelope):
+        """Unwrap the standard {status, data, ...} envelope."""
+        if isinstance(envelope, dict) and "data" in envelope:
+            return envelope["data"]
+        return envelope
+
 
 class _CustomerResource(_Resource):
     def list(self, *, search: str | None = None, page: int = 1, per_page: int = 25) -> dict:
         return self._list("customers", q=search, page=page, per_page=per_page)
 
     def get(self, customer_id: int) -> dict:
-        return self._get_one(f"customers/{customer_id}")
+        return self._unwrap(self._get_one(f"customers/{customer_id}"))
 
     def create(self, **fields) -> dict:
-        return self._create("customers/create", fields)
+        return self._unwrap(self._create("customers/create", fields))
 
     def update(self, customer_id: int, **fields) -> dict:
-        return self._update(f"customers/{customer_id}/update", fields)
+        return self._unwrap(self._update(f"customers/{customer_id}/update", fields))
 
     def delete(self, customer_id: int) -> None:
         self._delete(f"customers/{customer_id}/delete")
@@ -105,13 +112,13 @@ class _ContactResource(_Resource):
                           page=page, per_page=per_page)
 
     def get(self, contact_id: int) -> dict:
-        return self._get_one(f"contacts/{contact_id}")
+        return self._unwrap(self._get_one(f"contacts/{contact_id}"))
 
     def create(self, **fields) -> dict:
-        return self._create("contacts/create", fields)
+        return self._unwrap(self._create("contacts/create", fields))
 
     def update(self, contact_id: int, **fields) -> dict:
-        return self._update(f"contacts/{contact_id}/update", fields)
+        return self._unwrap(self._update(f"contacts/{contact_id}/update", fields))
 
     def delete(self, contact_id: int) -> None:
         self._delete(f"contacts/{contact_id}/delete")
@@ -124,13 +131,13 @@ class _InvoiceResource(_Resource):
                           page=page, per_page=per_page)
 
     def get(self, invoice_id: int) -> dict:
-        return self._get_one(f"invoices/{invoice_id}")
+        return self._unwrap(self._get_one(f"invoices/{invoice_id}"))
 
     def create(self, **fields) -> dict:
-        return self._create("invoices/create", fields)
+        return self._unwrap(self._create("invoices/create", fields))
 
     def update(self, invoice_id: int, **fields) -> dict:
-        return self._update(f"invoices/{invoice_id}/update", fields)
+        return self._unwrap(self._update(f"invoices/{invoice_id}/update", fields))
 
     def pdf(self, invoice_id: int) -> bytes:
         return self._c._get_raw(f"invoices/{invoice_id}/pdf")
@@ -143,7 +150,7 @@ class _SubscriptionResource(_Resource):
                           page=page, per_page=per_page)
 
     def get(self, subscription_id: int) -> dict:
-        return self._get_one(f"subscriptions/{subscription_id}")
+        return self._unwrap(self._get_one(f"subscriptions/{subscription_id}"))
 
 
 class _LeadResource(_Resource):
@@ -152,19 +159,19 @@ class _LeadResource(_Resource):
         return self._list("leads", q=search, status=status, page=page, per_page=per_page)
 
     def get(self, lead_id: int) -> dict:
-        return self._get_one(f"leads/{lead_id}")
+        return self._unwrap(self._get_one(f"leads/{lead_id}"))
 
     def create(self, **fields) -> dict:
-        return self._create("leads/create", fields)
+        return self._unwrap(self._create("leads/create", fields))
 
     def update(self, lead_id: int, **fields) -> dict:
-        return self._update(f"leads/{lead_id}/update", fields)
+        return self._unwrap(self._update(f"leads/{lead_id}/update", fields))
 
     def delete(self, lead_id: int) -> None:
         self._delete(f"leads/{lead_id}/delete")
 
     def convert(self, lead_id: int) -> dict:
-        return self._c._post(f"leads/{lead_id}/convert", {})
+        return self._unwrap(self._c._post(f"leads/{lead_id}/convert", {}))
 
 
 class _WebhookResource(_Resource):
@@ -172,7 +179,7 @@ class _WebhookResource(_Resource):
         return self._list("webhooks")["data"]
 
     def get(self, webhook_id: int) -> dict:
-        return self._get_one(f"webhooks/{webhook_id}")
+        return self._unwrap(self._get_one(f"webhooks/{webhook_id}"))
 
     def create(self, *, name: str, url: str, events: list[str],
                is_active: bool = True, secret: str | None = None) -> dict:
@@ -182,10 +189,10 @@ class _WebhookResource(_Resource):
         }
         if secret:
             body["secret"] = secret
-        return self._create("webhooks/create", body)
+        return self._unwrap(self._create("webhooks/create", body))
 
     def update(self, webhook_id: int, **fields) -> dict:
-        return self._update(f"webhooks/{webhook_id}/update", fields)
+        return self._unwrap(self._update(f"webhooks/{webhook_id}/update", fields))
 
     def delete(self, webhook_id: int) -> None:
         self._delete(f"webhooks/{webhook_id}/delete")
@@ -197,9 +204,9 @@ class _WebhookResource(_Resource):
 
 class _AuthResource(_Resource):
     def issue_token(self, *, email: str, password: str, name: str = "API token") -> dict:
-        return self._c._post("auth/token", {
+        return self._unwrap(self._c._post("auth/token", {
             "email": email, "password": password, "name": name,
-        })
+        }))
 
     def list_tokens(self) -> list[dict]:
         return self._list("auth/tokens")["data"]
