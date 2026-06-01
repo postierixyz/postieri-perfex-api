@@ -17,7 +17,8 @@ final class RateLimiter
         private int $tokenId,
         private int $perMinute,
         private int $perHour
-    ) {}
+    ) {
+    }
 
     /**
      * Check rate limit. Returns:

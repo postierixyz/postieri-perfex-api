@@ -27,7 +27,9 @@ final class Response
         $r = new self();
         $r->statusCode = $status;
         $r->body = ['status' => true, 'data' => $data];
-        if ($meta !== null) $r->body['meta'] = $meta;
+        if ($meta !== null) {
+            $r->body['meta'] = $meta;
+        }
         $r->emit();
         return $r;
     }

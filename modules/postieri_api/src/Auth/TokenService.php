@@ -12,7 +12,9 @@ use CI_DB_driver;
  */
 final class TokenService
 {
-    public function __construct(private CI_DB_driver $db) {}
+    public function __construct(private CI_DB_driver $db)
+    {
+    }
 
     /**
      * Issue a new token.
