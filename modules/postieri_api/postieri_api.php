@@ -29,6 +29,11 @@ hooks()->add_action('module_deactivate_postieri_api', 'postieri_api_deactivate')
 // Cron
 hooks()->add_action('after_cron_run', 'postieri_api_subscription_cron');
 
+// Live event hooks — wire into Perfex events
+hooks()->add_action('invoice_status_changed_to_2', 'postieri_api_on_invoice_paid', 10, 1); // status 2 = paid
+hooks()->add_action('lead_status_changed_to_junk', 'postieri_api_on_lead_lost', 10, 1);
+hooks()->add_action('lead_created', 'postieri_api_on_lead_created', 10, 1);
+
 /**
  * Register admin sidebar menu.
  */
@@ -106,4 +111,52 @@ function postieri_api_subscription_cron(): void
     $CI->load->library('postieri_api/webhook_dispatcher');
     $CI->webhook_dispatcher->dispatch_subscription_expiring();
     $CI->webhook_dispatcher->retry_failed();
+}
+
+/**
+ * Hook: invoice marked as paid (status 2 in Perfex).
+ * @param int $invoiceId
+ */
+function postieri_api_on_invoice_paid(int $invoiceId): void
+{
+    if (get_option('postieri_api_enabled') !== '1') return;
+    $CI = &get_instance();
+    $CI->load->model('invoices_model');
+    $inv = $CI->invoices_model->get($invoiceId);
+    if (!$inv) return;
+    $CI->load->library('postieri_api/webhook_dispatcher');
+    $CI->webhook_dispatcher->dispatch('invoice.paid', [
+        'invoice_id'  => (int) $inv->id,
+        'customer_id' => (int) $inv->clientid,
+        'total'       => (float) $inv->total,
+        'number'      => (string) $inv->number,
+    ]);
+}
+
+/**
+ * Hook: lead status changed to "lost/junk".
+ * @param int $leadId
+ */
+function postieri_api_on_lead_lost(int $leadId): void
+{
+    if (get_option('postieri_api_enabled') !== '1') return;
+    $CI = &get_instance();
+    $CI->load->library('postieri_api/webhook_dispatcher');
+    $CI->webhook_dispatcher->dispatch('lead.lost', [
+        'lead_id' => (int) $leadId,
+    ]);
+}
+
+/**
+ * Hook: lead created.
+ * @param int $leadId
+ */
+function postieri_api_on_lead_created(int $leadId): void
+{
+    if (get_option('postieri_api_enabled') !== '1') return;
+    $CI = &get_instance();
+    $CI->load->library('postieri_api/webhook_dispatcher');
+    $CI->webhook_dispatcher->dispatch('lead.created', [
+        'lead_id' => (int) $leadId,
+    ]);
 }

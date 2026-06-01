@@ -1,0 +1,69 @@
+# Postieri Perfex API — dev environment
+#
+# Spins up a full stack: PHP 8.2 + MySQL 8 + the module pre-mounted.
+# Designed for one-command local dev OR deployment to Coolify.
+#
+# Usage (local):
+#   docker compose up -d
+#   open http://localhost:8080
+#   follow /install to set up Perfex
+#   activate the "Postieri API" module in Setup → Modules
+#
+# Usage (Coolify):
+#   Set the deployment method to "Docker Compose" and point at this file.
+#   Coolify will provision the stack and route traffic.
+
+services:
+  perfex:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile
+    image: postierixyz/perfex-dev:3.4.1
+    container_name: postieri-perfex-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Perfex base URL — used for redirects and emails
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      # DB connection
+      DB_HOSTNAME: db
+      DB_USERNAME: perfex
+      DB_PASSWORD: perfexpass
+      DB_NAME: perfex
+      # Cron
+      CRON_ENABLED: "true"
+    volumes:
+      # Hot-mount our module so changes appear without rebuild
+      - ./modules/postieri_api:/var/www/html/modules/postieri_api
+      # Persistent Perfex data
+      - perfex_uploads:/var/www/html/uploads
+      - perfex_app:/var/www/html/application/config
+    ports:
+      - "8080:80"
+
+  db:
+    image: mysql:8.0
+    container_name: postieri-perfex-db
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: perfex
+      MYSQL_USER: perfex
+      MYSQL_PASSWORD: perfexpass
+    volumes:
+      - dbdata:/var/www/html  # placeholder so docker doesn't complain
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  perfex_uploads:
+  perfex_app:
+  dbdata:

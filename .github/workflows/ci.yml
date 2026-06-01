@@ -17,42 +17,75 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        php: ['8.1', '8.2', '8.3']
-
+        php: ["8.1", "8.2", "8.3"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Setup PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: json, mbstring, pdo, pdo_mysql
-          coverage: xdebug
+          extensions: mysqli, pdo_mysql, intl, zip, xml, curl
+          coverage: none
+          tools: composer, phpstan, phpcs, phpunit
 
       - name: Validate composer.json
-        run: composer validate --strict --no-check-publish
+        run: composer validate --strict
 
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: PHP syntax check
+      - name: PHP syntax check (every module file)
         run: |
-          echo "=== Syntax check on all PHP files ==="
-          find modules/postieri_api -name "*.php" -not -path "*/vendor/*" -not -path "*/tests/*" \
-            -exec php -l {} \; 2>&1 | grep -v "No syntax errors detected" || true
+          find modules/postieri_api -name '*.php' -print0 | xargs -0 -n1 -I{} \
+            php -l {}
 
-      - name: PHPUnit
+      - name: Run PHPUnit tests
         run: composer test
-        continue-on-error: true  # remove when tests are written
 
-      - name: PHPStan (static analysis)
-        run: |
-          vendor/bin/phpstan analyse modules/postieri_api/src \
-            --level=5 \
-            --no-progress \
-            || true  # remove || true when codebase is finalised
+      - name: Run PHPStan static analysis
+        run: composer analyse
 
-      - name: PHPCS (PSR-12 check)
+      - name: Run PHPCS code style check
+        run: composer cs-check
+
+  python:
+    name: Python ${{ matrix.python }} SDK
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Syntax check the SDK
+        working-directory: sdk/python
         run: |
-          vendor/bin/phpcs --standard=PSR12 modules/postieri_api/src || true
+          python -m py_compile postieri_perfex/__init__.py
+          python -m py_compile tests/test_client.py
+
+      - name: Run SDK tests
+        working-directory: sdk/python
+        run: |
+          python -m unittest tests.test_client -v
+
+  openapi:
+    name: OpenAPI spec lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate OpenAPI spec
+        uses: redocly/cli-action@v1
+        with:
+          spec: docs/openapi.yaml
+          args: lint
