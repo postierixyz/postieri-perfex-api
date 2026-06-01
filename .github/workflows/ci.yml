@@ -38,7 +38,7 @@ jobs:
 
       - name: PHP syntax check (every module file)
         run: |
-          find modules/postieri_api -name '*.php' -print0 | xargs -0 -n1 -I{} \
+          find . -name '*.php' -not -path './vendor/*' -not -path './sdk/*' -not -path './tests/*' -print0 | xargs -0 -n1 -I{} \
             php -l {}
 
       - name: Run PHPUnit tests

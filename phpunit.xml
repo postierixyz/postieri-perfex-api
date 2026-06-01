@@ -9,15 +9,15 @@
          failOnNotice="false">
     <testsuites>
         <testsuite name="Unit">
-            <directory>modules/postieri_api/tests/Unit</directory>
+            <directory>tests/Unit</directory>
         </testsuite>
         <testsuite name="Integration">
-            <directory>modules/postieri_api/tests/Integration</directory>
+            <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
     <source>
         <include>
-            <directory>modules/postieri_api/src</directory>
+            <directory>src</directory>
         </include>
     </source>
     <!--

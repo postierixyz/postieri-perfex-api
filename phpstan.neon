@@ -1,13 +1,12 @@
 parameters:
     level: 5
     paths:
-        - modules/postieri_api/src
-        - modules/postieri_api/controllers
-        - modules/postieri_api/libraries
-        - modules/postieri_api/models
+        - src
+        - controllers
+        - libraries
+        - models
     bootstrapFiles:
-        - vendor/autoload.php
         - tests/stubs/codeigniter.php
     excludePaths:
-        - modules/postieri_api/tests/*
-        - modules/postieri_api/views/*
+        - tests/*
+        - views/*

@@ -68,7 +68,8 @@ RUN git clone --depth 1 --branch 3.4.1 https://github.com/PerfexCRM/PerfexCRM.gi
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 # Bake the Postieri API module into the image
-COPY modules/postieri_api /var/www/html/modules/postieri_api
+# (the module is the entire repo, copied into Perfex's modules directory)
+COPY . /var/www/html/modules/postieri_api
 RUN chown -R www-data:www-data /var/www/html/modules/postieri_api
 
 # Cron for Perfex (subscriptions + webhooks)
